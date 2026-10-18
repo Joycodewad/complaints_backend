@@ -20,7 +20,7 @@ class Complaint(Base):
     assigned_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     status: Mapped[Status] = mapped_column(Enum(Status), default=Status.SUBMITTED, index=True)
     priority: Mapped[Priority | None] = mapped_column(Enum(Priority), nullable=True)
-    attachment: Mapped[str] = None #Les fichiers à ajouter
+    attachment: Mapped[str | None] = mapped_column(String(500), nullable=True)  # fichiers à ajouter
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

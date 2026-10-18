@@ -1,21 +1,22 @@
-from fastapi import APIRouter, Query
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Query, Response
+from sqlalchemy import select
 
 from app.api.deps import DB, CurrentAdmin
 from app.models import Category, Complaint, Priority, Status
 from app.schemas.complaint import AssignIn, CommentCreate, ComplaintDetail, ComplaintOut, PriorityIn, StatusUpdate
 from app.schemas.stats import StatsOut
 from app.services import complaint_service as svc
+from app.services.pagination import paginate_complaints, search_complaints
 
 router = APIRouter(tags=["Complaints"])
 
 
 @router.get("/complaints", response_model=list[ComplaintOut], summary="Toutes les plaintes (filtres)")
-def list_all(db: DB, _: CurrentAdmin,
+def list_all(response: Response, db: DB, _: CurrentAdmin,
              status: Status | None = None, priority: Priority | None = None,
              category_id: int | None = None, assigned_to_id: int | None = None, student_id: int | None = None,
              unassigned: bool = False, q: str | None = Query(None, description="Recherche : référence ou titre"),
-             skip: int = 0, limit: int = Query(50, le=200)):
+             skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200)):
     stmt = select(Complaint)
     if status:
         stmt = stmt.where(Complaint.status == status)
@@ -29,9 +30,7 @@ def list_all(db: DB, _: CurrentAdmin,
         stmt = stmt.where(Complaint.student_id == student_id)
     if unassigned:
         stmt = stmt.where(Complaint.assigned_to_id.is_(None))
-    if q:
-        stmt = stmt.where(or_(Complaint.reference.ilike(f"%{q}%"), Complaint.title.ilike(f"%{q}%")))
-    return db.scalars(stmt.order_by(Complaint.created_at.desc()).offset(skip).limit(limit)).all()
+    return paginate_complaints(db, search_complaints(stmt, q), response, skip, limit)
 
 
 @router.get("/complaints/{complaint_id}", response_model=ComplaintDetail, summary="Détail complet")

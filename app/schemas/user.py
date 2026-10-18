@@ -1,6 +1,8 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, model_validator
 
 from app.models.enums import Role
 from app.schemas.department import DepartmentOut
@@ -22,21 +24,26 @@ class UserOut(UserShort):
     department: DepartmentOut | None = None
 
 
+Trimmed = Annotated[str, StringConstraints(strip_whitespace=True)]
+
+
 class UserCreate(BaseModel):
-    username: str = Field(min_length=3, max_length=150)
+    username: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=150)]
     email: EmailStr
     password: str = Field(min_length=8)
-    first_name: str = ""
-    last_name: str = ""
+    first_name: Trimmed = ""
+    last_name: Trimmed = ""
     # This endpoint creates student accounts only. Elevated roles are managed
     # outside the user supplied create payload.
     # role: Literal[Role.STUDENT] = Role.STUDENT
     role: Role = Role.STUDENT
     department_id: int | None = Field(None, description="Obligatoire pour un COORDINATOR")
-    student_id: str | None = Field(None, description="Matricule, obligatoire pour un STUDENT")
+    student_id: Trimmed | None = Field(None, description="Matricule, obligatoire pour un STUDENT")
 
     @model_validator(mode="after")
     def check_role_fields(self):
+        if not self.username:
+            raise ValueError("username est obligatoire")
         if self.role == Role.STUDENT and not self.student_id:
             raise ValueError("student_id est obligatoire pour un étudiant")
         if self.role == Role.COORDINATOR and not self.department_id:
@@ -46,12 +53,12 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
-    first_name: str | None = None
-    last_name: str | None = None
+    first_name: Trimmed | None = None
+    last_name: Trimmed | None = None
     password: str | None = Field(None, min_length=8)
     is_active: bool | None = None
     department_id: int | None = None
-    student_id: str | None = None
+    student_id: Trimmed | None = None
 
 
 class Token(BaseModel):

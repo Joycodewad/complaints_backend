@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from sqlalchemy import select
 
 from app.api.deps import DB, CurrentStudent
 from app.models import Category, Complaint, Status
 from app.schemas.category import CategoryOut
 from app.schemas.complaint import CommentCreate, ComplaintCreate, ComplaintDetail, ComplaintOut
+from app.schemas.stats import StatusCounts
 from app.services import complaint_service as svc
+from app.services.pagination import paginate_complaints, search_complaints, status_counts
 
 router = APIRouter()
 
@@ -30,12 +32,19 @@ def create_complaint(data: ComplaintCreate, db: DB, student: CurrentStudent):
 
 
 @router.get("/complaints", response_model=list[ComplaintOut], tags=["My complaints"], summary="Lister mes plaintes")
-def list_my_complaints(db: DB, student: CurrentStudent,
-                       status: Status | None = Query(None), skip: int = 0, limit: int = Query(50, le=200)):
+def list_my_complaints(response: Response, db: DB, student: CurrentStudent,
+                       status: Status | None = Query(None), q: str | None = Query(None, description="Référence ou titre"),
+                       skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200)):
+    """Pagination : `skip` / `limit`. Le nombre total de résultats est dans l'en-tête `X-Total-Count`."""
     stmt = select(Complaint).where(Complaint.student_id == student.id)
     if status:
         stmt = stmt.where(Complaint.status == status)
-    return db.scalars(stmt.order_by(Complaint.created_at.desc()).offset(skip).limit(limit)).all()
+    return paginate_complaints(db, search_complaints(stmt, q), response, skip, limit)
+
+
+@router.get("/stats", response_model=StatusCounts, tags=["My complaints"], summary="Nombre de mes plaintes par statut")
+def my_stats(db: DB, student: CurrentStudent):
+    return status_counts(db, Complaint.student_id == student.id)
 
 
 @router.get("/complaints/{complaint_id}", response_model=ComplaintDetail, tags=["My complaints"],

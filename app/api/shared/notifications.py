@@ -9,7 +9,7 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 
 @router.get("", response_model=list[NotificationOut], summary="Mes notifications")
-def list_notifications(db: DB, user: CurrentUser, unread_only: bool = False, limit: int = Query(50, le=200)):
+def list_notifications(db: DB, user: CurrentUser, unread_only: bool = False, limit: int = Query(50, ge=1, le=200)):
     stmt = select(Notification).where(Notification.user_id == user.id)
     if unread_only:
         stmt = stmt.where(Notification.is_read.is_(False))
