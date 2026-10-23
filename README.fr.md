@@ -58,7 +58,7 @@ Cycle : `SUBMITTED → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED` (`RESOL
 
 * `StatusHistory` est alimenté uniquement par le service, aucune route ne l'écrit (lecture seule).
 * `User.student_id` (matricule) ≠ `Complaint.student_id` (clé étrangère vers `users.id`).
-* Production : remplacer `create_all` par Alembic et utiliser PostgreSQL.
+* Production : utiliser Alembic et PostgreSQL. Pour mettre à jour une base existante, exécuter `python -m alembic upgrade head` avant de redémarrer l'API : `create_all()` ne modifie pas les tables déjà créées. Cette migration rend nullable l'ancienne colonne `complaints.attachment`.
 
 ## Pagination
 Toutes les listes de plaintes (`GET /api/{student|coordinator|admin}/complaints`) sont paginées côté serveur :

@@ -51,6 +51,8 @@ DATABASE_URL=postgresql+psycopg://postgres.<project-ref>:<password>@<pooler-host
 ```
 For Supabase use the **Session pooler** connection string (IPv4 compatible, port 5432), URL-encode special characters in the password, and enable RLS on the tables so the public REST API cannot expose them. Then run `python -m scripts.seed`; tables are created at startup (use Alembic for real migrations).
 
+For an existing database, apply schema updates with `python -m alembic upgrade head` before restarting the API. This migration makes the legacy `complaints.attachment` column nullable; `create_all()` does not alter existing tables.
+
 ## API documentation
 | Role | Swagger | ReDoc |
 |---|---|---|

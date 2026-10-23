@@ -34,7 +34,6 @@ def require_roles(*roles: Role):
         if user.role not in roles:
             raise HTTPException(status.HTTP_403_FORBIDDEN, "Accès réservé : " + ", ".join(r.value for r in roles))
         return user
-
     return checker
 
 

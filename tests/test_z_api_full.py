@@ -6,7 +6,9 @@ import pytest
 
 from app.core.security import hash_password
 from app.db.session import SessionLocal
-from app.models import Category, Department, Role, User
+from app.core.utils import utcnow
+from app.models import Category, Complaint, Department, Role, Status, User
+from app.services.complaint_service import generate_reference
 from tests.conftest import auth
 
 PWD = "Password123!"
@@ -121,6 +123,22 @@ class TestStudentCreate:
         assert a["reference"] != b["reference"]
         assert int(b["reference"].rsplit("-", 1)[1]) == int(a["reference"].rsplit("-", 1)[1]) + 1
         assert a["status"] == "SUBMITTED" and a["assigned_to"] is None and a["priority"] is None
+
+    def test_reference_handles_five_digit_sequence(self, client, env):
+        prefix = f"CMP-{utcnow().year}-"
+        with SessionLocal() as db:
+            student = db.query(User).filter_by(username="stud").one()
+            db.add(Complaint(
+                reference=f"{prefix}10000",
+                title="Plainte de test",
+                description="Plainte de test pour la séquence des références.",
+                category_id=env["cat"],
+                student_id=student.id,
+                status=Status.SUBMITTED,
+            ))
+            db.commit()
+
+            assert generate_reference(db) == f"{prefix}10001"
 
 
 # ---------------------------------------------------------------- student : lecture / commentaires

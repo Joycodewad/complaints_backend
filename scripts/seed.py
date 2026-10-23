@@ -19,16 +19,18 @@ def main() -> None:
             Category(name="Notes et examens", description="Erreur de note, correction..."),
             Category(name="Infrastructures", description="Salles, matériel, wifi..."),
             Category(name="Administration", description="Inscriptions, documents..."),
+            Category(name="Equipements", description="Materiaux, constructions..."),
+
         ])
         db.flush()
-        pwd = hash_password("admin123")
+        pwd = hash_password("Password123!")
         db.add_all([
             User(username="admin", email="admin@univ.edu", hashed_password=pwd, role=Role.ADMIN, first_name="Ada", last_name="Admin"),
             User(username="coord", email="coord@univ.edu", hashed_password=pwd, role=Role.COORDINATOR, department_id=dept.id, first_name="Carl", last_name="Coord"),
             User(username="student", email="student@univ.edu", hashed_password=pwd, role=Role.STUDENT, student_id="2024-0001", first_name="Sam", last_name="Student"),
         ])
         db.commit()
-        print("OKay -> demo accounts create which successfuly (default identifiant : admin / coord / student ; mot de passe : [admin123])")
+        print("OKay -> demo accounts create which successfuly (default identifiant : admin / coord / student ; mot de passe : [Password123!])")
 
 
 if __name__ == "__main__":

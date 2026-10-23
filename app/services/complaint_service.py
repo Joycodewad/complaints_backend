@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status as http
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -34,11 +34,21 @@ def generate_reference(db: Session) -> str:
     last = db.scalar(
         select(Complaint.reference)
         .where(Complaint.reference.like(f"{prefix}%"))
-        .order_by(Complaint.reference.desc())
+        .order_by(func.length(Complaint.reference).desc(), Complaint.reference.desc())
         .limit(1)
     )
     number = int(last.rsplit("-", 1)[1]) + 1 if last else 1
     return f"{prefix}{number:04d}"
+
+
+def _is_reference_conflict(error: IntegrityError) -> bool:
+    original = error.orig
+    constraint_name = getattr(getattr(original, "diag", None), "constraint_name", None)
+    if constraint_name in {"ix_complaints_reference", "uq_complaints_reference"}:
+        return True
+
+    message = str(original).lower()
+    return "reference" in message and ("unique" in message or "duplicate" in message)
 
 
 def _log_status(db: Session, complaint: Complaint, old: Status | None, new: Status, user: User) -> None:
@@ -59,8 +69,10 @@ def create_complaint(db: Session, student: User, data: ComplaintCreate) -> Compl
         try:
             db.flush()
             break
-        except IntegrityError:
+        except IntegrityError as error:
             db.rollback()
+            if not _is_reference_conflict(error):
+                raise
     else:
         raise HTTPException(http.HTTP_503_SERVICE_UNAVAILABLE, "Impossible de générer la référence")
 
