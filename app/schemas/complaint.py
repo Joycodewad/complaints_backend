@@ -5,6 +5,7 @@ from typing import Annotated
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.models.enums import Priority, Status
+from app.schemas.attachment import AttachmentOut
 from app.schemas.category import CategoryOut
 from app.schemas.user import UserShort
 
@@ -61,6 +62,7 @@ class ComplaintOut(BaseModel):
 class ComplaintDetail(ComplaintOut):
     comments: list[CommentOut] = []
     history: list[StatusHistoryOut] = []
+    attachments: list[AttachmentOut] = []
 
 
 class AssignIn(BaseModel):

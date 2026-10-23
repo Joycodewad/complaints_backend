@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, File, HTTPException, Query, Response, UploadFile
 from sqlalchemy import select
 
 from app.api.deps import DB, CurrentStudent
@@ -6,6 +6,7 @@ from app.models import Category, Complaint, Status
 from app.schemas.category import CategoryOut
 from app.schemas.complaint import CommentCreate, ComplaintCreate, ComplaintDetail, ComplaintOut
 from app.schemas.stats import StatusCounts
+from app.services import attachment_service as att
 from app.services import complaint_service as svc
 from app.services.pagination import paginate_complaints, search_complaints, status_counts
 
@@ -58,3 +59,26 @@ def get_my_complaint(complaint_id: int, db: DB, student: CurrentStudent):
 def comment_my_complaint(complaint_id: int, data: CommentCreate, db: DB, student: CurrentStudent):
     complaint = _own(db, complaint_id, student)
     return svc.add_comment(db, complaint, student, data.message, is_resolution=False)
+
+
+@router.post("/complaints/{complaint_id}/attachments", response_model=ComplaintDetail, status_code=201,
+             tags=["My complaints"], summary="Joindre des images ou vidéos")
+def upload_attachments(complaint_id: int, db: DB, student: CurrentStudent,
+                       files: list[UploadFile] = File(..., description="Images (png, jpeg, gif, webp) ou vidéos (mp4, mov, webm)")):
+    """Limites : 5 fichiers par plainte, 50 Mo par fichier. Le type est vérifié sur le contenu du fichier.
+    Tout ou rien : si un fichier est refusé, aucun du lot n'est enregistré."""
+    return att.save_uploads(db, _own(db, complaint_id, student), student, files)
+
+
+@router.get("/complaints/{complaint_id}/attachments/{attachment_id}", tags=["My complaints"],
+            summary="Télécharger une pièce jointe")
+def get_attachment(complaint_id: int, attachment_id: int, db: DB, student: CurrentStudent):
+    complaint = _own(db, complaint_id, student)
+    return att.download(att.get_attachment_or_404(complaint, attachment_id))
+
+
+@router.delete("/complaints/{complaint_id}/attachments/{attachment_id}", response_model=ComplaintDetail,
+               tags=["My complaints"], summary="Supprimer une de mes pièces jointes")
+def delete_attachment(complaint_id: int, attachment_id: int, db: DB, student: CurrentStudent):
+    complaint = _own(db, complaint_id, student)
+    return att.delete(db, complaint, att.get_attachment_or_404(complaint, attachment_id), student)

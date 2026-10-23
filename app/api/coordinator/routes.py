@@ -5,6 +5,7 @@ from app.api.deps import DB, CurrentCoordinator
 from app.models import Complaint, Status
 from app.schemas.complaint import CommentCreate, ComplaintDetail, ComplaintOut, StatusUpdate
 from app.schemas.stats import StatusCounts
+from app.services import attachment_service as att
 from app.services import complaint_service as svc
 from app.services.pagination import paginate_complaints, search_complaints, status_counts
 
@@ -53,3 +54,9 @@ def comment(complaint_id: int, data: CommentCreate, db: DB, coordinator: Current
     """Avec `is_resolution=true`, le commentaire est enregistré comme résolution et la plainte passe à `RESOLVED`."""
     complaint = _assigned(db, complaint_id, coordinator)
     return svc.add_comment(db, complaint, coordinator, data.message, data.is_resolution)
+
+
+@router.get("/complaints/{complaint_id}/attachments/{attachment_id}", summary="Télécharger une pièce jointe")
+def get_attachment(complaint_id: int, attachment_id: int, db: DB, coordinator: CurrentCoordinator):
+    complaint = _assigned(db, complaint_id, coordinator)
+    return att.download(att.get_attachment_or_404(complaint, attachment_id))

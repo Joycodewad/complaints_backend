@@ -5,6 +5,7 @@ from app.api.deps import DB, CurrentAdmin
 from app.models import Category, Complaint, Priority, Status
 from app.schemas.complaint import AssignIn, CommentCreate, ComplaintDetail, ComplaintOut, PriorityIn, StatusUpdate
 from app.schemas.stats import StatsOut
+from app.services import attachment_service as att
 from app.services import complaint_service as svc
 from app.services.pagination import paginate_complaints, search_complaints
 
@@ -84,3 +85,9 @@ def stats(db: DB, _: CurrentAdmin):
         unassigned=sum(1 for c in complaints if c.assigned_to_id is None),
         avg_resolution_hours=round(sum(durations) / len(durations), 2) if durations else None,
     )
+
+
+@router.get("/complaints/{complaint_id}/attachments/{attachment_id}", summary="Télécharger une pièce jointe")
+def get_attachment(complaint_id: int, attachment_id: int, db: DB, _: CurrentAdmin):
+    complaint = svc.get_complaint_or_404(db, complaint_id)
+    return att.download(att.get_attachment_or_404(complaint, attachment_id))

@@ -37,3 +37,7 @@ class Complaint(Base):
         "StatusHistory", back_populates="complaint",
         order_by="StatusHistory.changed_at", cascade="all, delete-orphan",
     )
+    attachments = relationship(
+        "Attachment", back_populates="complaint",
+        order_by="Attachment.created_at, Attachment.id", cascade="all, delete-orphan",
+    )

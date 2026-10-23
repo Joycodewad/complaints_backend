@@ -20,7 +20,7 @@ pip install -r requirements.txt
 cp .env.example .env                                   # then set SECRET_KEY (and DATABASE_URL)
 python -m scripts.seed                                 # demo accounts: admin / coord / student
 uvicorn app.main:app --reload                          # http://localhost:8000
-pytest                                                 # 69 tests, run on a temporary SQLite database
+pytest                                                 # 99 tests, run on a temporary SQLite database
 ```
 Demo accounts created by the seed script use the password `admin123`. **Change or delete them before deploying.**
 
@@ -76,6 +76,21 @@ Use the **Authorize** button with a `username` / `password` (`POST /auth/login` 
 - Elevated roles (`COORDINATOR`, `ADMIN`) cannot be created through the API (by design); create them with the seed script or directly in the database.
 - Text input is trimmed; blank titles, descriptions and messages are rejected.
 
+## Attachments (images and videos)
+Students can attach up to **5 files** (50 MB each) to their complaints. Everyone who can see the complaint can view them.
+
+| Endpoint | Who | Description |
+|---|---|---|
+| `POST /api/student/complaints/{id}/attachments` | owner | multipart upload, field `files` (one or several); all-or-nothing |
+| `GET /api/{student,coordinator,admin}/complaints/{id}/attachments/{aid}` | same rules as the complaint | returns the file (needs the `Authorization` header) |
+| `DELETE /api/student/complaints/{id}/attachments/{aid}` | uploader | only while the complaint is not closed |
+
+- `GET /complaints/{id}` returns the list of attachments (`id`, `filename`, `content_type`, `size`).
+- Allowed: PNG, JPEG, GIF, WebP, MP4, MOV, WebM. The type is detected from the **file content** (not the client header); SVG and everything else is rejected (`415`). Too large: `413`. Limit reached or complaint closed: `409`.
+- Files are stored on disk under `UPLOAD_DIR` (default `uploads/`, git-ignored), named with a random UUID; the original name is only a sanitized label. The module `app/services/attachment_service.py` is the single place to change to use Supabase Storage / S3.
+- Limits are configurable: `UPLOAD_DIR`, `MAX_UPLOAD_MB`, `MAX_FILES_PER_COMPLAINT`.
+- The `attachments` table is created automatically at startup.
+
 ## Pagination
 All complaint lists (`GET /api/{student|coordinator|admin}/complaints`) are paginated on the server:
 
@@ -108,7 +123,7 @@ app/
     └── admin/              # complaints, users, referentials + Swagger
 scripts/seed.py             # demo data
 scripts/seed_demo.py        # fictitious data for the whole workflow
-tests/                      # lifecycle, role isolation, validation, pagination, demo seed (69 tests)
+tests/                      # lifecycle, role isolation, validation, pagination, demo seed (99 tests)
 ```
 
 ## Security notes

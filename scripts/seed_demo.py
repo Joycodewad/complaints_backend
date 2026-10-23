@@ -22,8 +22,9 @@ from app.core.security import hash_password
 from app.core.utils import utcnow
 from app.db.base import Base
 from app.db.session import SessionLocal, engine
+from app.services.attachment_service import purge_complaint_files
 from app.models import (
-    Category, Complaint, ComplaintComment, Department, Notification, Priority, Role, Status, StatusHistory, User,
+    Attachment, Category, Complaint, ComplaintComment, Department, Notification, Priority, Role, Status, StatusHistory, User,
 )
 
 MARKER = "demo-seed"
@@ -170,6 +171,7 @@ def reset(db) -> None:
     """Supprime uniquement les données de démo (plaintes marquées + comptes ajoutés par ce script)."""
     ids = db.scalars(select(Complaint.id).where(Complaint.attachment == MARKER)).all()
     if ids:
+        db.execute(delete(Attachment).where(Attachment.complaint_id.in_(ids)))
         db.execute(delete(Notification).where(Notification.complaint_id.in_(ids)))
         db.execute(delete(ComplaintComment).where(ComplaintComment.complaint_id.in_(ids)))
         db.execute(delete(StatusHistory).where(StatusHistory.complaint_id.in_(ids)))
@@ -183,8 +185,11 @@ def reset(db) -> None:
         used |= set(db.scalars(select(Complaint.assigned_to_id).where(Complaint.assigned_to_id.in_(uids))).all())
         used |= set(db.scalars(select(ComplaintComment.author_id).where(ComplaintComment.author_id.in_(uids))).all())
         used |= set(db.scalars(select(StatusHistory.changed_by_id).where(StatusHistory.changed_by_id.in_(uids))).all())
+        used |= set(db.scalars(select(Attachment.uploaded_by_id).where(Attachment.uploaded_by_id.in_(uids))).all())
         db.execute(delete(User).where(User.id.in_([i for i in uids if i not in used])))
     db.commit()
+    for cid in ids:
+        purge_complaint_files(cid)
     print(f"Demo data removed ({len(ids)} complaints).")
 
 
