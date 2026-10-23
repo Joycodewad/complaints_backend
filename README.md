@@ -20,9 +20,29 @@ pip install -r requirements.txt
 cp .env.example .env                                   # then set SECRET_KEY (and DATABASE_URL)
 python -m scripts.seed                                 # demo accounts: admin / coord / student
 uvicorn app.main:app --reload                          # http://localhost:8000
-pytest                                                 # 66 tests, run on a temporary SQLite database
+pytest                                                 # 69 tests, run on a temporary SQLite database
 ```
 Demo accounts created by the seed script use the password `admin123`. **Change or delete them before deploying.**
+
+### Demo data to try the whole workflow
+```bash
+python -m scripts.seed_demo            # load fictitious data (safe to run twice)
+python -m scripts.seed_demo --reset    # remove only the demo data
+python -m scripts.seed_demo --reload   # reset, then load again
+```
+Adds 7 departments, 6 categories, 8 students, 4 coordinators, 1 admin and **37 complaints** spread over the whole lifecycle, with messages, status history and notifications:
+
+| Status | Complaints | What to test |
+|---|---|---|
+| `SUBMITTED` | 12 | Admin queue: assign to a coordinator, set a priority (enough to paginate) |
+| `ASSIGNED` | 8 | Coordinator: start work (`IN_PROGRESS`) |
+| `IN_PROGRESS` | 6 | Coordinator: post a resolution; one was reopened after a first fix |
+| `RESOLVED` | 5 | Admin: verify and close, or reopen |
+| `CLOSED` | 6 | Read-only history |
+
+Accounts added (password `Password123!`): students `amara.okafor`, `kabelo.mthembu`, `lerato.dube`, `thabo.nkosi`, `zoe.martin`, `noah.dlamini`, `lina.haddad`, `omar.benali`; coordinators `priya.naidoo` (Engineering), `erik.lindqvist` (Hostel and facilities), `grace.okafor` (Library), `daniel.tan` (Finance office); admin `jordan.lee`. The accounts from `scripts.seed` (`admin`, `coord`, `student`, password `admin123`) keep working.
+
+Demo complaints are tagged (`attachment = "demo-seed"`), so `--reset` never touches real data. All data is fictitious and the passwords are public: **remove it before going to production**.
 
 ### Using PostgreSQL (Neon, Supabase…)
 Set `DATABASE_URL` in `.env`, for example:
@@ -87,7 +107,8 @@ app/
     ├── coordinator/        # coordinator routes + Swagger
     └── admin/              # complaints, users, referentials + Swagger
 scripts/seed.py             # demo data
-tests/                      # lifecycle, role isolation, validation, pagination (66 tests)
+scripts/seed_demo.py        # fictitious data for the whole workflow
+tests/                      # lifecycle, role isolation, validation, pagination, demo seed (69 tests)
 ```
 
 ## Security notes
