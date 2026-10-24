@@ -3,6 +3,7 @@
     python -m scripts.seed_demo           # charge les données (sans doublon si déjà chargées)
     python -m scripts.seed_demo --reset   # supprime uniquement les données de démo
     python -m scripts.seed_demo --reload  # --reset puis rechargement
+    python -m scripts.seed_demo --with-categories   # plaintes déjà catégorisées (aperçu du sprint 3)
 
 Le script complète `scripts.seed` (admin / coord / student) : il ajoute des départements, des catégories,
 des étudiants, des coordinateurs et ~40 plaintes réparties sur tout le cycle de vie
@@ -193,7 +194,8 @@ def reset(db) -> None:
     print(f"Demo data removed ({len(ids)} complaints).")
 
 
-def load(db) -> None:
+def load(db, with_categories: bool = False) -> None:
+    """Par défaut les plaintes ne sont PAS catégorisées : en release 1 c'est l'administrateur qui catégorisera (story 6)."""
     if db.scalar(select(Complaint.id).where(Complaint.attachment == MARKER).limit(1)):
         print("Demo data already loaded (use --reload to reset and load again).")
         return
@@ -238,7 +240,7 @@ def load(db) -> None:
         year_counter[t0.year] += 1
         c = Complaint(
             reference=f"CMP-{t0.year}-{year_counter[t0.year]:04d}", title=title, description=desc,
-            category_id=cats[cat].id, student_id=student.id, status=S.SUBMITTED, priority=None,
+            category_id=cats[cat].id if with_categories else None, student_id=student.id, status=S.SUBMITTED, priority=None,
             attachment=MARKER, created_at=t0, updated_at=t0,
         )
         db.add(c)
@@ -342,7 +344,7 @@ def main(argv: list[str]) -> None:
         if "--reset" in argv or "--reload" in argv:
             reset(db)
         if "--reset" not in argv:
-            load(db)
+            load(db, with_categories="--with-categories" in argv)
 
 
 if __name__ == "__main__":

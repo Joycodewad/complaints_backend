@@ -77,7 +77,8 @@ def stats(db: DB, _: CurrentAdmin):
     durations = []
     for c in complaints:
         by_status[c.status.value] = by_status.get(c.status.value, 0) + 1
-        by_category[names[c.category_id]] = by_category.get(names[c.category_id], 0) + 1
+        label = names.get(c.category_id, "Uncategorized")
+        by_category[label] = by_category.get(label, 0) + 1
         if c.resolved_at:
             durations.append((c.resolved_at - c.created_at).total_seconds() / 3600)
     return StatsOut(

@@ -20,7 +20,7 @@ pip install -r requirements.txt
 cp .env.example .env                                   # then set SECRET_KEY (and DATABASE_URL)
 python -m scripts.seed                                 # demo accounts: admin / coord / student
 uvicorn app.main:app --reload                          # http://localhost:8000
-pytest                                                 # 99 tests, run on a temporary SQLite database
+pytest                                                 # 106 tests, run on a temporary SQLite database
 ```
 Demo accounts created by the seed script use the password `admin123`. **Change or delete them before deploying.**
 
@@ -29,6 +29,7 @@ Demo accounts created by the seed script use the password `admin123`. **Change o
 python -m scripts.seed_demo            # load fictitious data (safe to run twice)
 python -m scripts.seed_demo --reset    # remove only the demo data
 python -m scripts.seed_demo --reload   # reset, then load again
+python -m scripts.seed_demo --with-categories   # same data, already categorized (Sprint 3 preview)
 ```
 Adds 7 departments, 6 categories, 8 students, 4 coordinators, 1 admin and **37 complaints** spread over the whole lifecycle, with messages, status history and notifications:
 
@@ -73,6 +74,7 @@ Use the **Authorize** button with a `username` / `password` (`POST /auth/login` 
 | Users, departments, categories, stats | ❌ | ❌ | ✅ |
 
 - Comments are rejected on closed complaints.
+- **Categories are optional (Release 1).** A student submits a title, a description and optional files; `category_id` can be omitted and the complaint shows as *uncategorized*. Categorizing is an administrator action planned for Sprint 3 (story 6). If a `category_id` is sent it is still validated. Existing databases need `ALTER TABLE complaints ALTER COLUMN category_id DROP NOT NULL` (also provided as Alembic migration `b7e1c4a92d10`).
 - Elevated roles (`COORDINATOR`, `ADMIN`) cannot be created through the API (by design); create them with the seed script or directly in the database.
 - Text input is trimmed; blank titles, descriptions and messages are rejected.
 
@@ -123,7 +125,7 @@ app/
     └── admin/              # complaints, users, referentials + Swagger
 scripts/seed.py             # demo data
 scripts/seed_demo.py        # fictitious data for the whole workflow
-tests/                      # lifecycle, role isolation, validation, pagination, demo seed (99 tests)
+tests/                      # lifecycle, role isolation, validation, pagination, demo seed (106 tests)
 ```
 
 ## Security notes

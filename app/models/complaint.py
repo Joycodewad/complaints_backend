@@ -15,7 +15,8 @@ class Complaint(Base):
     reference: Mapped[str] = mapped_column(String(20), unique=True, index=True)  # CMP-YYYY-0001
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text)
-    category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+    # Optionnelle : la catégorisation est faite par l'administrateur (story 6, sprint 3)
+    category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"), nullable=True)
     student_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)  # FK -> users.id
     assigned_to_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     status: Mapped[Status] = mapped_column(Enum(Status), default=Status.SUBMITTED, index=True)

@@ -15,7 +15,7 @@ class ComplaintCreate(BaseModel):
 
     title: str = Field(min_length=5, max_length=200, examples=["Note erronée en Algorithmique"])
     description: str = Field(min_length=10, examples=["Ma note de l'examen final n'a pas été mise à jour..."])
-    category_id: int
+    category_id: int | None = Field(None, description="Optionnelle : l'administrateur catégorise (sprint 3)")
 
 
 class CommentCreate(BaseModel):
@@ -48,7 +48,7 @@ class ComplaintOut(BaseModel):
     reference: str
     title: str
     description: str
-    category: CategoryOut
+    category: CategoryOut | None = None
     student: UserShort
     assigned_to: UserShort | None
     status: Status
