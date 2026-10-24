@@ -1,10 +1,13 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 from sqlalchemy import select
 
 from app.api.deps import DB, CurrentCoordinator
 from app.models import Complaint, Status
 from app.schemas.complaint import CommentCreate, ComplaintDetail, ComplaintOut, StatusUpdate
+from app.schemas.stats import StatusCounts
+from app.services import attachment_service as att
 from app.services import complaint_service as svc
+from app.services.pagination import paginate_complaints, search_complaints, status_counts
 
 router = APIRouter(tags=["Assigned complaints"])
 
@@ -17,12 +20,19 @@ def _assigned(db, complaint_id: int, coordinator) -> Complaint:
 
 
 @router.get("/complaints", response_model=list[ComplaintOut], summary="Plaintes qui me sont assignées")
-def list_assigned(db: DB, coordinator: CurrentCoordinator,
-                  status: Status | None = Query(None), skip: int = 0, limit: int = Query(50, le=200)):
+def list_assigned(response: Response, db: DB, coordinator: CurrentCoordinator,
+                  status: Status | None = Query(None), q: str | None = Query(None, description="Référence ou titre"),
+                  skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200)):
+    """Pagination : `skip` / `limit`. Le nombre total de résultats est dans l'en-tête `X-Total-Count`."""
     stmt = select(Complaint).where(Complaint.assigned_to_id == coordinator.id)
     if status:
         stmt = stmt.where(Complaint.status == status)
-    return db.scalars(stmt.order_by(Complaint.created_at.desc()).offset(skip).limit(limit)).all()
+    return paginate_complaints(db, search_complaints(stmt, q), response, skip, limit)
+
+
+@router.get("/stats", response_model=StatusCounts, summary="Nombre de plaintes assignées par statut")
+def my_stats(db: DB, coordinator: CurrentCoordinator):
+    return status_counts(db, Complaint.assigned_to_id == coordinator.id)
 
 
 @router.get("/complaints/{complaint_id}", response_model=ComplaintDetail, summary="Détail d'une plainte assignée")
@@ -44,3 +54,9 @@ def comment(complaint_id: int, data: CommentCreate, db: DB, coordinator: Current
     """Avec `is_resolution=true`, le commentaire est enregistré comme résolution et la plainte passe à `RESOLVED`."""
     complaint = _assigned(db, complaint_id, coordinator)
     return svc.add_comment(db, complaint, coordinator, data.message, data.is_resolution)
+
+
+@router.get("/complaints/{complaint_id}/attachments/{attachment_id}", summary="Télécharger une pièce jointe")
+def get_attachment(complaint_id: int, attachment_id: int, db: DB, coordinator: CurrentCoordinator):
+    complaint = _assigned(db, complaint_id, coordinator)
+    return att.download(att.get_attachment_or_404(complaint, attachment_id))

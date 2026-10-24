@@ -32,7 +32,8 @@ app = FastAPI(
     ),
     openapi_tags=[{"name": "Authentication", "description": "Login JWT and profil"}],
 )
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+                   expose_headers=["X-Total-Count"])
 
 app.include_router(auth.router)
 app.mount("/api/student", student_app)

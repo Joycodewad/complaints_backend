@@ -46,9 +46,10 @@ def _log_status(db: Session, complaint: Complaint, old: Status | None, new: Stat
 
 
 def create_complaint(db: Session, student: User, data: ComplaintCreate) -> Complaint:
-    category = db.get(Category, data.category_id)
-    if not category or not category.is_active:
-        raise HTTPException(http.HTTP_422_UNPROCESSABLE_ENTITY, "Catégorie invalide ou inactive")
+    if data.category_id is not None:  # facultative : l'administrateur catégorise plus tard
+        category = db.get(Category, data.category_id)
+        if not category or not category.is_active:
+            raise HTTPException(http.HTTP_422_UNPROCESSABLE_ENTITY, "Catégorie invalide ou inactive")
 
     for _ in range(3):  # retry en cas de collision de référence
         complaint = Complaint(

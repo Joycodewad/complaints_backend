@@ -1,3 +1,4 @@
+from app.models.attachment import Attachment
 from app.models.category import Category
 from app.models.comment import ComplaintComment
 from app.models.complaint import Complaint
@@ -8,6 +9,6 @@ from app.models.status_history import StatusHistory
 from app.models.user import User
 
 __all__ = [
-    "Category", "ComplaintComment", "Complaint", "Department", "Notification",
+    "Attachment", "Category", "ComplaintComment", "Complaint", "Department", "Notification",
     "StatusHistory", "User", "Priority", "Role", "Status",
 ]
