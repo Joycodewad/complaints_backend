@@ -372,7 +372,8 @@ class TestAdminUsers:
         assert self.create(client, username="ab", email="a1@x.io", student_id="V1").status_code == 422
         assert self.create(client, username="valid1", email="not-an-email", student_id="V2").status_code == 422
         assert self.create(client, username="valid2", email="v2@x.io", password="short", student_id="V3").status_code == 422
-        assert self.create(client, username="valid3", email="v3@x.io", student_id=None).status_code == 422
+        assert self.create(client, username="valid3", email="v3@x.io", first_name="").status_code == 422     # nom obligatoire
+        assert self.create(client, username="valid3", email="v3@x.io", first_name="   ").status_code == 422
         assert self.create(client, username="valid4", email="v4@x.io", role="BOGUS", student_id="V4").status_code == 422
         assert self.create(client, username="valid5", email="v5@x.io", student_id="V5", department_id=99999).status_code == 422
 
@@ -382,10 +383,17 @@ class TestAdminUsers:
         assert self.create(client, username="dup2", email="dup1@x.io", student_id="D3").status_code == 409
         assert self.create(client, username="dup3", email="dup3@x.io", student_id="D1").status_code == 409
 
-    def test_elevated_roles_blocked_by_design(self, client, env):
+    def test_admin_can_create_coordinators_and_admins(self, client, env):
+        # sprint 1, story 1 : l'administrateur gère les comptes de tous les rôles
         r = self.create(client, username="co9", email="co9@x.io", role="COORDINATOR", department_id=env["dept"], student_id=None)
-        assert r.status_code == 403
-        assert self.create(client, username="ad9", email="ad9@x.io", role="ADMIN", student_id=None).status_code == 403
+        assert r.status_code == 201 and r.json()["role"] == "COORDINATOR" and r.json()["department"]["id"] == env["dept"]
+        r = self.create(client, username="ad9", email="ad9@x.io", role="ADMIN", student_id=None)
+        assert r.status_code == 201 and r.json()["role"] == "ADMIN"
+        coord = auth_email(client, "co9@x.io")
+        assert client.get("/api/coordinator/complaints", headers=coord).status_code == 200
+        assert client.get("/api/admin/users", headers=coord).status_code == 403
+        adm = auth_email(client, "ad9@x.io")
+        assert client.get("/api/admin/users", headers=adm).status_code == 200
 
     def test_only_admin(self, client):
         for who in ("stud", "coord"):
@@ -561,3 +569,9 @@ class TestPagination:
     def test_total_header_exposed_to_browsers(self, client, env):
         r = client.get("/api/student/complaints", headers={**H(client, "stud"), "Origin": "http://localhost:5173"})
         assert "x-total-count" in r.headers.get("access-control-expose-headers", "").lower()
+
+
+def auth_email(client, email, password="Secret123!"):
+    r = client.post("/auth/login", data={"username": email, "password": password})
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}

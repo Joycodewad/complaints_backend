@@ -10,10 +10,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str = os.getenv("SECRET_KEY")
     ALGORITHM: str = os.getenv("ALGORITHM")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES")
-    # Pièces jointes (images / vidéos)
+    # Pièce jointe facultative : une image par plainte (sprint 1)
     UPLOAD_DIR: str = "uploads"
-    MAX_UPLOAD_MB: int = 50
-    MAX_FILES_PER_COMPLAINT: int = 5
+    MAX_UPLOAD_MB: int = 10
+    MAX_FILES_PER_COMPLAINT: int = 1
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

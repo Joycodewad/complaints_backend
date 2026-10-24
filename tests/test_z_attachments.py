@@ -33,6 +33,10 @@ HEIC = b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic" + b"\0" * 20
 @pytest.fixture(autouse=True)
 def upload_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "UPLOAD_DIR", str(tmp_path / "uploads"))
+    # La plupart des tests couvrent la mécanique d'envoi (plusieurs fichiers, tailles) : on relève les limites par défaut
+    # du sprint 1 (1 image, 10 Mo) ; la classe TestSprint1Limits vérifie les valeurs par défaut.
+    monkeypatch.setattr(settings, "MAX_FILES_PER_COMPLAINT", 5)
+    monkeypatch.setattr(settings, "MAX_UPLOAD_MB", 50)
     return tmp_path / "uploads"
 
 
@@ -71,15 +75,16 @@ def f(name, data, ctype="application/octet-stream"):
 class TestUpload:
     def test_all_allowed_types(self, client, cat):
         cid = make(client, cat)
-        r = up(client, cid, [f("a.png", _png()), f("b.jpg", JPEG), f("c.gif", GIF), f("d.webp", WEBP), f("e.mp4", MP4)])
+        r = up(client, cid, [f("a.png", _png()), f("b.jpg", JPEG), f("c.gif", GIF), f("d.webp", WEBP)])
         assert r.status_code == 201, r.text
         types = [a["content_type"] for a in r.json()["attachments"]]
-        assert types == ["image/png", "image/jpeg", "image/gif", "image/webp", "video/mp4"]
+        assert types == ["image/png", "image/jpeg", "image/gif", "image/webp"]
 
-    def test_mov_and_webm(self, client, cat):
+    @pytest.mark.parametrize("name,data", [("clip.mp4", MP4), ("clip.mov", MOV), ("clip.webm", WEBM)])
+    def test_videos_are_not_accepted(self, client, cat, name, data):
+        # sprint 1 : la pièce jointe est une image
         cid = make(client, cat)
-        r = up(client, cid, [f("m.mov", MOV), f("w.webm", WEBM)])
-        assert [a["content_type"] for a in r.json()["attachments"]] == ["video/quicktime", "video/webm"]
+        assert up(client, cid, [f(name, data)]).status_code == 415
 
     def test_type_comes_from_content_not_from_client_header(self, client, cat):
         cid = make(client, cat)
@@ -267,3 +272,25 @@ class TestDelete:
             db.delete(db.get(Complaint, cid))
             db.commit()
             assert db.query(Attachment).filter_by(complaint_id=cid).count() == 0
+
+
+class TestSprint1Limits:
+    """Plan du sprint 1 (story 3) : une image facultative par plainte, formats et taille limités."""
+
+    def test_default_configuration(self):
+        fresh = type(settings)()
+        assert fresh.MAX_FILES_PER_COMPLAINT == 1 and fresh.MAX_UPLOAD_MB == 10
+
+    def test_one_image_per_complaint_and_max_10_mb(self, client, cat, monkeypatch):
+        monkeypatch.setattr(settings, "MAX_FILES_PER_COMPLAINT", 1)
+        monkeypatch.setattr(settings, "MAX_UPLOAD_MB", 10)
+        cid = make(client, cat)
+        assert up(client, cid, [f("a.png", _png()), f("b.png", _png())]).status_code == 409   # deux d'un coup
+        assert up(client, cid, [f("big.png", _png(extra=10 * 1024 * 1024 + 10))]).status_code == 413
+        assert up(client, cid, [f("a.png", _png())]).status_code == 201
+        assert up(client, cid, [f("b.png", _png())]).status_code == 409                          # une seule image
+
+    def test_a_complaint_works_without_any_image(self, client, cat):
+        cid = make(client, cat)
+        detail = client.get(f"/api/student/complaints/{cid}", headers=auth(client, "stud")).json()
+        assert detail["attachments"] == [] and detail["status"] == "SUBMITTED"

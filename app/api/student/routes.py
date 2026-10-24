@@ -62,10 +62,10 @@ def comment_my_complaint(complaint_id: int, data: CommentCreate, db: DB, student
 
 
 @router.post("/complaints/{complaint_id}/attachments", response_model=ComplaintDetail, status_code=201,
-             tags=["My complaints"], summary="Joindre des images ou vidéos")
+             tags=["My complaints"], summary="Joindre une image")
 def upload_attachments(complaint_id: int, db: DB, student: CurrentStudent,
-                       files: list[UploadFile] = File(..., description="Images (png, jpeg, gif, webp) ou vidéos (mp4, mov, webm)")):
-    """Limites : 5 fichiers par plainte, 50 Mo par fichier. Le type est vérifié sur le contenu du fichier.
+                       files: list[UploadFile] = File(..., description="Image (png, jpeg, gif, webp)")):
+    """Sprint 1 : une image facultative par plainte, 10 Mo maximum. Le type est vérifié sur le contenu du fichier.
     Tout ou rien : si un fichier est refusé, aucun du lot n'est enregistré."""
     return att.save_uploads(db, _own(db, complaint_id, student), student, files)
 

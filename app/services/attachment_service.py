@@ -2,7 +2,7 @@
 
 Sécurité :
 * le type est déterminé par les premiers octets du fichier (signature), jamais par l'en-tête envoyé par le client ;
-* seules les images (png, jpeg, gif, webp) et vidéos (mp4, mov, webm) sont acceptées (pas de SVG : XSS) ;
+* seules les images (png, jpeg, gif, webp) sont acceptées (pas de SVG : XSS) ; sprint 1 : une image par plainte ;
 * le nom stocké sur disque est un uuid : le nom d'origine n'est qu'un libellé nettoyé (pas de path traversal) ;
 * taille et nombre de fichiers limités ; en cas d'erreur sur un fichier, aucun fichier du lot n'est conservé.
 
@@ -22,11 +22,7 @@ from app.core.config import settings
 from app.models import Attachment, Complaint, Status, User
 from app.services.notification_service import notify
 
-EXTENSIONS = {
-    "image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp",
-    "video/mp4": ".mp4", "video/quicktime": ".mov", "video/webm": ".webm",
-}
-MP4_BRANDS = {b"isom", b"iso2", b"mp41", b"mp42", b"avc1", b"M4V ", b"MSNV", b"dash"}
+EXTENSIONS = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
 CHUNK = 1024 * 1024
 
 
@@ -40,15 +36,6 @@ def sniff(head: bytes) -> str | None:
         return "image/gif"
     if head[:4] == b"RIFF" and head[8:12] == b"WEBP":
         return "image/webp"
-    if head[4:8] == b"ftyp":
-        brand = head[8:12]
-        if brand == b"qt  ":
-            return "video/quicktime"
-        if brand in MP4_BRANDS:
-            return "video/mp4"
-        return None
-    if head[:4] == b"\x1aE\xdf\xa3":
-        return "video/webm"
     return None
 
 
@@ -94,8 +81,7 @@ def save_uploads(db: Session, complaint: Complaint, user: User, files: list[Uplo
             f.file.seek(0)
             ctype = sniff(head)
             if not ctype:
-                raise HTTPException(415, f"{f.filename or 'fichier'} : seules les images (png, jpeg, gif, webp) "
-                                         "et vidéos (mp4, mov, webm) sont acceptées")
+                raise HTTPException(415, f"{f.filename or 'fichier'} : seules les images (png, jpeg, gif, webp) sont acceptées")
             stored = f"{uuid4().hex}{EXTENSIONS[ctype]}"
             path = folder / stored
             size = 0
